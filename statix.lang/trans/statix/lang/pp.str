@@ -28,4 +28,9 @@ rules
 
 rules
 
+  pp-Constraints-string =
+    pp-Statix-string(prettyprint-Statix-Constraints)
+
+rules
+
   construct-textual-change = construct-textual-change(pp-partial-Statix-string, parenthesize, override-reconstruction, resugar)

@@ -26,3 +26,15 @@ context-free syntax
   TType.SCOPE      = <scope>
   TType.LIST       = <list(<TType>)>
   TType.TUPLE      = <(<{TType " * "}*>)>
+
+context-free syntax
+
+  Constraints = [{[{Constraint ", "}*]}]
+
+  Constraint.Sub = [[TType] <: [TType]]
+  Constraint.Pos = [+[TType]]
+  Constraint.Neg = [-[TType]]
+
+  TVar.PVAR = <+<NaBL2Scope>>
+  TVar.NVAR = <-<NaBL2Scope>>
+  TType = TVar

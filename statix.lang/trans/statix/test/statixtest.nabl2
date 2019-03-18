@@ -9,6 +9,6 @@ rules
   [[ Test(vs, c, sections) ^ (s) ]] :=
     Sections[[ sections ^ (s) ]],
     new s', s' ---> s,
-    Map1T(VarDecl)[[ vs ^ (s') : _ ]],
+    Map1(VarDecl)[[ vs ^ (s') ]],
     distinct/name D(s')/Var | error $[Duplicate local variable [NAME]] @NAMES,
     [[ c ^ (s') ]].

@@ -251,7 +251,7 @@ context-free syntax
       <{OpDecl "\n"}*>
   > {longest-match}
 
-  SortDecl.SortDecl  = SortId
+  SortDecl.SortDecl = SortId
 
   Sort.SimpleSort = SortId
 
@@ -269,6 +269,7 @@ context-free syntax
   SortRef                = <(<SortRef>)> {bracket}
 
   OpDecl.OpDecl  = <<OpId> : <OpSort>>
+  OpDecl.SortInj  = [[SortRef] => [Sort]]
 
   OpSort.ConstOp = Sort
   OpSort.ArrowOp = [[{SortRef " * "}+] -> [Sort]]

@@ -28,7 +28,7 @@ signature
     Query
 
   relations
-    in  : Type * TClass
+    in : Type * TClass
 
   name resolution
     labels P I
@@ -127,7 +127,7 @@ rules
     new s_body, s_body ---> s_rule,
     distinct/name D(s_body)/Var | error $[Duplicate body variable [NAME]] @NAMES,
     (D(s_body) lsect/name D(s_rule)) subseteq 0 | error $[Shadowing local variable [NAME]] @NAMES,
-    Map1T(VarDecl)[[ bvs ^ (s_body) : _ ]],
+    Map1(VarDecl)[[ bvs ^ (s_body) ]],
     [[ body ^ (s_body) ]].
 
   RuleHead[[ C(x, args) ^ (s_rule, _) ]] :=
@@ -159,7 +159,8 @@ rules
   Term(V)[[ COp(x, args) ^ (s) : outty ]] :=
     C{x} -> s, C{x} |-> d, @x.decl := d,
     d : ty, ty != PRED(_) | error "Inline notation can only be used for functional constraints.",
-    outty is `out-type` of ty,
+    intys is `in-types` of ty,
+    outty' is `out-type` of ty, ?-Sub(outty', outty),
     Map1T(Term(V))[[ args ^ (s) : intys ]].
 
 /******************************************************************
@@ -187,6 +188,7 @@ rules
 
   Term(V)[[ AskRelOp(rel, ts, st) ^ (s) : outty ]] :=
     RelRef[[ rel ^ (s) : ty ]], ty != PRED(_) | error "Inline notation can only be used for functional relations.",
+    intys is `in-types` of ty,
     outty is `out-type` of ty,
     Map1T(Term(V))[[ ts ^ (s) : intys ]],
     Term(V)[[ st ^ (s) : SCOPE() ]].
@@ -214,7 +216,7 @@ rules
     [[ c2 ^ (s) ]].
 
   [[ CNew(vs) ^ (s) ]] :=
-    Map1t(VarRef)[[ vs ^ (s) : SCOPE() ]].
+    Map1t(BuildVar)[[ vs ^ (s) : SCOPE() ]].
 
   [[ CTermId(t1, t2) ^ (s) ]] :=
     Build[[ t1 ^ (s) : _ ]],
@@ -235,12 +237,12 @@ rules
   [[ LLam(ps, vs, c) ^ (s) : PRED(tys) ]] :=
     new s', s' ---> s,
     Map1T(Match)[[ ps ^ (s') : tys ]],
-    Map1T(VarDecl)[[ vs ^ (s') : _ ]],
+    Map1(VarDecl)[[ vs ^ (s') ]],
     [[ c ^ (s') ]].
 
-  Term(V)[[ NewOp() ^ (s) : SCOPE() ]].
+  Term(V)[[ NewOp() ^ (s) : ty ]] := ?-Sub(SCOPE(), ty).
 
-  Term(V)[[ TermIdOp(t) ^ (s) : TERM_ID() ]] :=
+  Term(V)[[ TermIdOp(t) ^ (s) : ty ]] := ?-Sub(TERM_ID(), ty),
     Term(V)[[ t ^ (s) : _ ]].
 
 /******************************************************************
@@ -343,22 +345,22 @@ rules
     Build[[ pt ^ (s) : PATH() ]],
     Build[[ lt ^ (s) : LIST(LABEL()) ]].
 
-  Term(V)[[ PathSrcOp(t) ^ (s) : SCOPE() ]] :=
+  Term(V)[[ PathSrcOp(t) ^ (s) : ty ]] := ?-Sub(SCOPE(), ty),
     Term(V)[[ t ^ (s) : PATH() ]].
-  Term(V)[[ PathScopesOp(t) ^ (s) : LIST(SCOPE()) ]] :=
+  Term(V)[[ PathScopesOp(t) ^ (s) : ty ]] := ?-Sub(LIST(SCOPE()), ty),
     Term(V)[[ t ^ (s) : PATH() ]].
-  Term(V)[[ PathLabelsOp(t) ^ (s) : LIST(LABEL()) ]] :=
+  Term(V)[[ PathLabelsOp(t) ^ (s) : ty ]] := ?-Sub(LIST(LABEL()), ty),
     Term(V)[[ t ^ (s) : PATH() ]].
-  Term(V)[[ PathDstOp(t) ^ (s) : SCOPE() ]] :=
+  Term(V)[[ PathDstOp(t) ^ (s) : ty ]] := ?-Sub(SCOPE(), ty),
     Term(V)[[ t ^ (s) : PATH() ]].
 
-  Term(V)[[ Occurrence(ns, ts, pos) ^ (s) : OCCURRENCE() ]] :=
+  Term(V)[[ Occurrence(ns, ts, pos) ^ (s) : ty ]] := ?-Sub(OCCURRENCE(), ty),
     Ns{ns} -> s, Ns{ns} |-> d, @ns.decl := d,
     d : NS(tys),
     Map1T(Term(V))[[ ts ^ (s) : tys ]],
     Pos(V)[[ pos ^ (s) : _ ]].
 
-  Pos(V)[[ NoId() ^ (s) : TERM_ID() ]].
+  Pos(V)[[ NoId() ^ (s) : ty ]] := !-Sub(TERM_ID(), ty).
   Pos(V)[[ t ^ (s) : ty ]] :=
     Term(V)[[ t ^ (s) : ty ]].
 
@@ -423,6 +425,11 @@ rules
     Op{x} : ty !!,
     OpSort[[ sort ^ (s) : ty ]].
 
+  [[ SortInj(sort', sort) ^ (s) ]] :=
+    SortRef[[ sort' ^ (s) : ty' ]],
+    RealSortRef[[ sort ^ (s) : ty ]],
+    !-Sub(ty', ty).
+
   OpSort[[ ConstOp(sort) ^ (s) : OP([], ty) ]] :=
     RealSortRef[[ sort ^ (s) : ty ]].
 
@@ -459,56 +466,55 @@ rules
 
 rules
 
+  VarDecl[[ Var(x) ^ (s) ]] :=
+    Var{x} <- s, @x.decl := Var{x},
+    Var{x} : ty !, ?-Neg(ty).
+
+  VarDecl[[ Wld() ^ (_) ]].
+
+
   Match[[ t ^ (s) : ty ]] :=
-    Term(NonUniqueVarDecl)[[ t ^ (s) : ty ]].
+    Term(MatchVar)[[ t ^ (s) : ty ]].
+
+  MatchVar[[ Var(x) ^ (s) : ty ]] :=
+    Var{x @s} <- s, @x.decl := Var{x @s},
+    Var{x @s} : ty' !, ?-Neg(ty'), ?-Sub(ty', ty).
+
+  MatchVar[[ Wld() ^ (_) : _ ]].
+
 
   Build[[ t ^ (s) : ty ]] :=
-    Term(VarRef)[[ t ^ (s) : ty ]].
+    Term(BuildVar)[[ t ^ (s) : ty ]].
 
-  NonUniqueVarDecl[[ Var(x) ^ (s) : ty ]] :=
-    Var{x @s} <- s, @x.decl := Var{x @s},
-    Var{x @s} : ty !.
-
-  NonUniqueVarDecl[[ Wld() ^ (_) : _ ]].
-
-  VarDecl[[ Var(x) ^ (s) : ty ]] :=
-    Var{x} <- s, @x.decl := Var{x},
-    Var{x} : ty !.
-
-  VarDecl[[ Wld() ^ (_) : _ ]].
-
-  VarRef[[ Var(x) ^ (s) : ty ]] :=
+  BuildVar[[ Var(x) ^ (s) : ty ]] :=
     Var{x} -> s, Var{x} |-> d, @x.decl := d,
-    d : ty.
+    d : ty', ?-Sub(ty', ty).
 
-  VarRef[[ Wld() ^ (_) : _ ]].
+  BuildVar[[ Wld() ^ (_) : _ ]].
+
 
   Term(V)[[ v@Var(_) ^ (s) : ty ]] :=
     V[[ v ^ (s) : ty ]].
   Term(V)[[ Wld() ^ (_) : ty ]].
-  Term(V)[[ List(ts) ^ (s): LIST(ty) ]] :=
+  Term(V)[[ List(ts) ^ (s): ty' ]] := ?-Sub(LIST(ty), ty'),
     Map1t(Term(V))[[ ts ^ (s) : ty ]].
-  Term(V)[[ ListTail(ts, t) ^ (s) : LIST(ty) ]] :=
+  Term(V)[[ ListTail(ts, t) ^ (s) : ty' ]] := ?-Sub(LIST(ty), ty'),
     Map1t(Term(V))[[ ts ^ (s) : ty ]],
-    Term(V)[[ t ^ (s) : LIST(ty) ]].
-//Term(V)[[ ListLength(t) ^ (s): INT() ]] :=
-//  Term(V)[[ t ^ (s) : LIST(_) ]].
-  Term(V)[[ Tuple(ts) ^ (s) : TUPLE(tys) ]] :=
+    Term(V)[[ t ^ (s) : ty' ]].
+  Term(V)[[ Tuple(ts) ^ (s) : ty ]] := ?-Sub(TUPLE(tys), ty),
     Map1T(Term(V))[[ ts ^ (s) : tys ]].
   Term(V)[[ Op(x, args) ^ (s) : ty ]] :=
     Op{x} -> s, Op{x} |-> d, @x.decl := Op{x},
-    d : OP(tys, ty),
+    d : OP(tys, ty'), ?-Sub(ty', ty),
     Map1T(Term(V))[[ args ^ (s) : tys ]].
-  Term(V)[[ Str(_) ^ (_) : STRING() ]].
-//Term(V)[[ StrBuild(ts) ^ (s) : STRING() ]] :=
-//  Map1T(Term(V))[[ ts ^ (s) : _ ]].
-  Term(V)[[ Int(_) ^ (_) : INT() ]].
+  Term(V)[[ Str(_) ^ (_) : ty ]] := ?-Sub(STRING(), ty).
+  Term(V)[[ Int(_) ^ (_) : ty ]] := ?-Sub(INT(), ty).
   Term(V)[[ As(v, t) ^ (s) : ty ]] :=
     V[[ v ^ (s) : ty ]],
     Term(V)[[ t ^ (s) : ty ]].
   Term(V)[[ Ascribe(t, sort) ^ (s) : ty ]] :=
     SortRef[[ sort ^ (s) : ty ]],
-    Term(V)[[ t ^ (s) : ty ]].
+    Term(V)[[ t ^ (s) : ty' ]], ?-Sub(ty', ty).
 
 rules
 

@@ -8,12 +8,14 @@ imports
   nabl2runtime
   nabl2/api
   nabl2/runtime/analysis/main
+  nabl2/runtime/analysis/debug // for private focus-term
   nabl2/runtime/analysis/query // for private set-custom-analysis
 
   signatures/statix/lang/-
 
   statix/lang/statics/-
 
+  statix/lang/pp
   pp
 
 rules // Analysis
@@ -30,6 +32,8 @@ rules // Analysis
              step(s,k) = { ast, a:
                            analyze;
                            if ?(ast, a, [], _, _) then
+                             nabl2-custom-analysis-info-msg(|"| Constraints:");
+                             nabl2-get-symbolic-goals(|a);make-set;nabl2--focus-term(|resource);pp-Constraints-string;debug;
                              nabl2-custom-analysis-info-msg(|"| Transforming...");
                              <keep-origin(s(|a))> ast;
                              k
